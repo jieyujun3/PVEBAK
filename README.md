@@ -1,8 +1,11 @@
 # PVEBAK
 备份
+
 bash <(curl -sSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/pve_backup_restore.sh) backup
 恢复
+
 bash <(curl -sSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/pve_backup_restore.sh) restore
+
 备份打包本地VM
 
 
