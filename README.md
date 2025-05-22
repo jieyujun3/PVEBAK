@@ -1,7 +1,19 @@
 # PVEBAK
+备份
 bash <(curl -sSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/pve_backup_restore.sh) backup
-
+恢复
 bash <(curl -sSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/pve_backup_restore.sh) restore
+备份打包本地VM
+
+
+tar czf /root/local_vm_backup_$(date +%F).tar.gz /etc/pve/qemu-server /var/lib/vz/images
+
+恢复本地vm：（上传备份文件到根目录或者git）
+
+curl -sSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/restore_vm.sh -o restore_vm.sh
+chmod +x restore_vm.sh
+./restore_vm.sh
+
 
 一、恢复配置后需要特别注意的地方
 1. OSD 和 Ceph 恢复注意点
