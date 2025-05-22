@@ -42,9 +42,15 @@ bash <(curl -sSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/pve_bac
 
 🧩 你可以这样打包：
 bash
-复制
-编辑
+
+
+
+
 tar czf /root/local_vm_backup_$(date +%F).tar.gz /etc/pve/qemu-server /var/lib/vz/images
+
+
+
+
 ✅ 三、恢复步骤建议
 恢复前请确认以下顺序：
 
@@ -55,6 +61,9 @@ tar czf /root/local_vm_backup_$(date +%F).tar.gz /etc/pve/qemu-server /var/lib/v
 4	重启系统检查服务状态
 5	使用 ceph-volume lvm list 检查 OSD
 6	恢复本地虚拟机配置和磁盘（如有）
+
+
+
 
 📦 进阶建议
 脚本中加入 /var/lib/ceph 备份选项（默认不动数据盘）
