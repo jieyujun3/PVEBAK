@@ -1,4 +1,14 @@
 # PVEBAK
+
+常用菜单
+
+curl -fsSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/pve-toolkit.sh -o pve-toolkit.sh
+chmod +x pve-toolkit.sh
+./pve-toolkit.sh
+
+
+
+
 备份
 
 bash <(curl -sSL https://raw.githubusercontent.com/jieyujun3/PVEBAK/main/pve_backup_restore.sh) backup
