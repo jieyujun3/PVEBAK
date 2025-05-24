@@ -1,104 +1,132 @@
 #!/bin/bash
-# PVE Ultimate 一键优化 & 工具脚本 by jieyujun3
-# 功能：国内源、企业源、去订阅弹窗、系统更新、安装 Ceph、ZFS 支持、常用工具
 
-set -e
+# Define backup and restore directories
+BACKUP_DIR="/root/pvebak"
+VM_CONF_BACKUP="/root/pvebak/vm_backup"
 
-PVE_SOURCE_FILE="/etc/apt/sources.list"
-PVE_ENTERPRISE_LIST="/etc/apt/sources.list.d/pve-enterprise.list"
-PVE_CEPH_LIST="/etc/apt/sources.list.d/ceph.list"
-JS_FILE="/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js"
+# Ensure backup directories exist
+mkdir -p "$BACKUP_DIR" "$VM_CONF_BACKUP"
 
-backup_sources() {
-  cp -f "$PVE_SOURCE_FILE" "$PVE_SOURCE_FILE.bak"
-  [ -f "$PVE_ENTERPRISE_LIST" ] && cp "$PVE_ENTERPRISE_LIST" "$PVE_ENTERPRISE_LIST.bak"
-  echo "\n✅ 已备份源配置"
+function show_main_menu() {
+    clear
+    echo "========= PVE 工具箱 ========="
+    echo "1. 国内源与企业订阅优化"
+    echo "2. 系统网络配置"
+    echo "3. 备份与还原工具"
+    echo "4. 常用工具安装"
+    echo "5. 常用命令功能"
+    echo "6. 退出"
+    echo "=============================="
+    read -p "请选择功能 [1-6]: " choice
+
+    case $choice in
+        1) optimize_sources ;;
+        2) network_config ;;
+        3) backup_restore_menu ;;
+        4) install_tools_menu ;;
+        5) common_cmd_menu ;;
+        6) exit 0 ;;
+        *) echo "无效选项，请重新选择。"; sleep 2; show_main_menu ;;
+    esac
 }
 
-change_to_china_sources() {
-  echo -e "\n🌐 选择国内源："
-  echo "1) 清华"
-  echo "2) 中科大"
-  echo "3) 阿里"
-  echo "4) 华为"
-  read -p "选择 [默认1]: " opt
-  case $opt in
-    2) base_url="http://mirrors.ustc.edu.cn";;
-    3) base_url="http://mirrors.aliyun.com";;
-    4) base_url="https://mirrors.huaweicloud.com";;
-    *) base_url="https://mirrors.tuna.tsinghua.edu.cn";;
-  esac
-
-  cat > "$PVE_SOURCE_FILE" <<EOF
-deb $base_url/debian bookworm main contrib non-free non-free-firmware
-deb $base_url/debian bookworm-updates main contrib non-free non-free-firmware
-deb $base_url/debian-security bookworm-security main contrib non-free non-free-firmware
+function optimize_sources() {
+    echo "更换国内源..."
+    sed -i.bak 's|http://download.proxmox.com|https://mirrors.tuna.tsinghua.edu.cn/proxmox|' /etc/apt/sources.list
+    echo "去除企业订阅..."
+    sed -i.bak '/enterprise/s/^/#/' /etc/apt/sources.list.d/pve-enterprise.list
+    echo "去除订阅提醒..."
+    cat <<EOF > /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+Ext.Msg.show=function(){};
 EOF
-
-  echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
-  apt update
-  echo "✅ 国内源切换完成"
+    echo "更新系统..."
+    apt update && apt -y full-upgrade
+    echo "完成！"
+    read -p "按回车返回主菜单..." temp
+    show_main_menu
 }
 
-enable_enterprise_sources() {
-  echo "deb https://enterprise.proxmox.com/debian/ceph-quincy bookworm enterprise" > "$PVE_CEPH_LIST"
-  apt update
-  echo "✅ 企业 Ceph 源设置完成"
+function network_config() {
+    echo "==== 网络配置 ===="
+    read -p "请输入新的IP地址（如192.168.1.100/24）: " ipaddr
+    read -p "请输入网关地址: " gateway
+    read -p "请输入要配置的网卡名（如ens18）: " iface
+    cat <<EOF > /etc/network/interfaces
+source /etc/network/interfaces.d/*
+
+auto lo
+iface lo inet loopback
+
+auto $iface
+iface $iface inet static
+    address $ipaddr
+    gateway $gateway
+EOF
+    echo "网络配置已更新。请手动重启网络或系统使其生效。"
+    read -p "按回车返回主菜单..." temp
+    show_main_menu
 }
 
-remove_subscription_notice() {
-  if grep -q "No valid subscription" "$JS_FILE"; then
-    sed -i.bak "/.*No valid subscription/,+10 s/Ext.Msg.show.*//g" "$JS_FILE"
-    echo "✅ 去除订阅弹窗成功 (如无效请清缓存/重启pveproxy)"
-  else
-    echo "订阅弹窗代码未找到或已去除"
-  fi
+function backup_restore_menu() {
+    clear
+    echo "===== 备份与还原 ====="
+    echo "1. 备份 PVE 配置 (/etc)"
+    echo "2. 还原 PVE 配置"
+    echo "3. 备份 VM 配置 (/etc/pve/qemu-server)"
+    echo "4. 还原 VM 配置"
+    echo "5. 返回主菜单"
+    read -p "请选择操作 [1-5]: " opt
+
+    case $opt in
+        1) cp -r /etc "$BACKUP_DIR" && echo "配置已备份至 $BACKUP_DIR" ;;
+        2) cp -r "$BACKUP_DIR/etc"/* /etc/ && echo "配置已还原。请检查系统服务是否正常。" ;;
+        3) cp -r /etc/pve/qemu-server "$VM_CONF_BACKUP" && echo "VM配置已备份。" ;;
+        4) cp -r "$VM_CONF_BACKUP/qemu-server" /etc/pve/ && echo "VM配置已还原。" ;;
+        5) show_main_menu ;;
+        *) echo "无效选项..." ;;
+    esac
+    read -p "按回车返回..." temp
+    backup_restore_menu
 }
 
-update_system() {
-  apt update && apt full-upgrade -y
-  echo "✅ 系统更新完成"
+function install_tools_menu() {
+    echo "===== 常用工具安装 ====="
+    echo "1. 安装 iftop"
+    echo "2. 安装 htop"
+    echo "3. 安装 nfs-common"
+    echo "4. 返回主菜单"
+    read -p "请选择要安装的工具 [1-4]: " toolopt
+
+    case $toolopt in
+        1) apt install -y iftop ;;
+        2) apt install -y htop ;;
+        3) apt install -y nfs-common ;;
+        4) show_main_menu ;;
+        *) echo "无效选项..." ;;
+    esac
+    read -p "按回车继续..." temp
+    install_tools_menu
 }
 
-install_ceph() {
-  echo "\n🚀 安装 Ceph (Quincy) ..."
-  pveceph install --version 17
-  echo "✅ Ceph 安装完成"
+function common_cmd_menu() {
+    echo "===== 常用命令功能 ====="
+    echo "1. 查看磁盘分区 (lsblk)"
+    echo "2. 挂载共享磁盘 (手动输入)"
+    echo "3. 查看网卡信息 (ip a)"
+    echo "4. 重新加载网络 (systemctl restart networking)"
+    echo "5. 返回主菜单"
+    read -p "选择功能 [1-5]: " cmdopt
+
+    case $cmdopt in
+        1) lsblk ;;
+        2) read -p "请输入共享磁盘路径（如/dev/sdb1）: " disk; read -p "请输入挂载目录: " mnt; mkdir -p "$mnt"; mount "$disk" "$mnt" && echo "挂载完成" ;;
+        3) ip a ;;
+        4) systemctl restart networking && echo "网络已重启" ;;
+        5) show_main_menu ;;
+        *) echo "无效选项..." ;;
+    esac
+    read -p "按回车继续..." temp
+    common_cmd_menu
 }
 
-install_zfs_tools() {
-  echo "\n🚀 安装 ZFS 支持工具 ..."
-  apt install -y zfsutils-linux zfs-zed
-  echo "✅ ZFS 工具安装完成"
-}
-
-install_common_tools() {
-  echo "\n🚀 安装常用工具 ..."
-  apt install -y htop iftop iotop smartmontools lshw lm-sensors curl vim git
-  echo "✅ 常用工具安装完成"
-}
-
-while true; do
-  echo -e "\n=========== 🚀 PVE Ultimate 工具菜单 ==========="
-  echo "1) 切换国内源"
-  echo "2) 设置企业 Ceph 源"
-  echo "3) 去除订阅登录弹窗"
-  echo "4) 系统更新"
-  echo "5) 安装 Ceph (17 Quincy)"
-  echo "6) 安装 ZFS 支持"
-  echo "7) 安装常用工具 (htop 等)"
-  echo "8) 退出"
-  echo "==========================================="
-  read -p "请选择操作 [1-8]: " action
-  case $action in
-    1) backup_sources; change_to_china_sources;;
-    2) enable_enterprise_sources;;
-    3) remove_subscription_notice;;
-    4) update_system;;
-    5) install_ceph;;
-    6) install_zfs_tools;;
-    7) install_common_tools;;
-    8) echo "退出"; exit 0;;
-    *) echo "无效选择，请输入1-8";;
-  esac
-done
+show_main_menu
