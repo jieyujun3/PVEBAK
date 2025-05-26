@@ -29,6 +29,17 @@ chmod +x restore_vm.sh
 ./restore_vm.sh
 
 
+🛠️ 如果只是 Web UI 显示异常，但 ssh、ceph、ping 都正常？
+说明底层网络通、集群服务部分挂了或是配置不一致。可以：
+
+所有节点执行：
+
+
+systemctl restart pve-cluster corosync pvedaemon pveproxy
+
+
+
+
 一、恢复配置后需要特别注意的地方
 1. OSD 和 Ceph 恢复注意点
 恢复 /etc 配置后，你需要：
